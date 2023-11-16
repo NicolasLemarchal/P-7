@@ -1,4 +1,5 @@
 const Book = require('../models/Book');
+const sharp = require('sharp');
 const fs = require('fs');
 
 // Fonction utilitaire pour calculer la note moyenne
@@ -8,20 +9,29 @@ function calculateAverageRating(ratings) {
   return totalRating / ratings.length;
 }
 
-exports.createBook = (req, res, next) => {
-  const bookObject = JSON.parse(req.body.book);
-  delete bookObject._id;
-  delete bookObject.userId;
+exports.createBook = async (req, res, next) => {
+  try {
+    const bookObject = JSON.parse(req.body.book);
+    delete bookObject._id;
+    delete bookObject.userId;
 
-  const book = new Book({
-    ...bookObject,
-    userId: req.auth.userId,
-    imageUrl: `${req.protocol}://${req.get('host')}/images/${req.file.filename}`
-  });
+    const imagePath = `./images/${req.file.filename}`;
+    const webpImagePath = `./images/${req.file.filename.replace(/\.[^/.]+$/, "")}.webp`;
+    await sharp(imagePath).toFormat('webp').toFile(webpImagePath);
 
-  book.save()
-    .then(() => { res.status(201).json({message: 'Objet enregistré !'})})
-    .catch(error => { res.status(400).json({ error })})
+    const book = new Book({
+      ...bookObject,
+      userId: req.auth.userId,
+      imageUrl: `${req.protocol}://${req.get('host')}/images/${req.file.filename.replace(/\.[^/.]+$/, "")}.webp`
+    });
+
+    await book.save();
+    fs.unlinkSync(imagePath);
+
+    res.status(201).json({ message: 'Objet enregistré !' });
+  } catch (error) {
+    res.status(400).json({ error });
+  }
 };
 
 exports.modifyBook = (req, res, next) => {
