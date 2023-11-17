@@ -34,21 +34,36 @@ exports.createBook = async (req, res, next) => {
   }
 };
 
-exports.modifyBook = (req, res, next) => {
-  const { title, author, imageUrl, year, genre } = req.body;
-  const bookObject = req.file
-    ? {
-        title,
-        author,
-        imageUrl: `${req.protocol}://${req.get('host')}/images/${req.file.filename}`,
-        year,
-        genre,
-      }
-    : { title, author, imageUrl, year, genre };
+exports.modifyBook = async (req, res, next) => {
+  try {
+    const { title, author, year, genre } = req.body;
+    const bookObject = req.file
+      ? {
+          title,
+          author,
+          year,
+          genre,
+        }
+      : { title, author, year, genre };
 
-  Book.findByIdAndUpdate(req.params.id, { ...bookObject }, { new: true })
-    .then(updatedBook => res.status(200).json({ message: 'Livre modifié avec succès', book: updatedBook }))
-    .catch(err => res.status(401).json({ message: err.message }));
+    if (req.file) {
+      const oldBook = await Book.findById(req.params.id);
+      const oldImagePath = `./images/${oldBook.imageUrl.split('/images/')[1]}`;
+      fs.unlinkSync(oldImagePath);
+
+      const imagePath = `./images/${req.file.filename}`;
+      const webpImagePath = `./images/${req.file.filename.replace(/\.[^/.]+$/, '')}.webp`;
+      await sharp(imagePath).toFormat('webp').toFile(webpImagePath);
+      bookObject.imageUrl = `${req.protocol}://${req.get('host')}${webpImagePath.slice(1)}`;
+
+      fs.unlinkSync(imagePath);
+    }
+
+    const updatedBook = await Book.findByIdAndUpdate(req.params.id, { ...bookObject }, { new: true });
+    res.status(200).json({ message: 'Livre modifié avec succès', book: updatedBook });
+  } catch (error) {
+    res.status(401).json({ message: error.message });
+  }
 };
 
 exports.deleteBook = (req, res, next) => {
