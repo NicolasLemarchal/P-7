@@ -16,13 +16,13 @@ exports.createBook = async (req, res, next) => {
     delete bookObject.userId;
 
     const imagePath = `./images/${req.file.filename}`;
-    const webpImagePath = `./images/${req.file.filename.replace(/\.[^/.]+$/, "")}.webp`;
+    const webpImagePath = `./images/${req.file.filename.replace(/\.[^/.]+$/, '')}.webp`;
     await sharp(imagePath).toFormat('webp').toFile(webpImagePath);
 
     const book = new Book({
       ...bookObject,
       userId: req.auth.userId,
-      imageUrl: `${req.protocol}://${req.get('host')}/images/${req.file.filename.replace(/\.[^/.]+$/, "")}.webp`
+      imageUrl: `${req.protocol}://${req.get('host')}${webpImagePath.slice(1)}`
     });
 
     await book.save();
