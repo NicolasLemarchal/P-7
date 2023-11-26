@@ -8,14 +8,8 @@
 Faites cette liste de commande à la suite et dans l'ordre pour installer les dépendances du projet :
 
 `npm install -g nodemon`
-`npm install express`
-`npm install mangodb`
-`npm install mongoose`
-`npm install --force mongoose-unique-validator`
-`npm install --force bcrypt`
-`npm install --force jsonwebtoken`
-`npm install --force multer`
-`npm install --force sharp`
+
+`npm install`
 
 Lancer ensuite `npm start` à la racine du projet pour lancer la partie Frontend du projet.
 
