@@ -17,7 +17,11 @@ exports.createBook = async (req, res, next) => {
 
     const imagePath = `./images/${req.file.filename}`;
     const webpImagePath = `./images/${req.file.filename.replace(/\.[^/.]+$/, '')}.webp`;
-    await sharp(imagePath).toFormat('webp').toFile(webpImagePath);
+    
+    await sharp(imagePath)
+      .resize(206, 260)
+      .toFormat('webp')
+      .toFile(webpImagePath);
 
     const book = new Book({
       ...bookObject,
@@ -53,7 +57,12 @@ exports.modifyBook = async (req, res, next) => {
 
       const imagePath = `./images/${req.file.filename}`;
       const webpImagePath = `./images/${req.file.filename.replace(/\.[^/.]+$/, '')}.webp`;
-      await sharp(imagePath).toFormat('webp').toFile(webpImagePath);
+      
+      await sharp(imagePath)
+        .resize(206, 260)
+        .toFormat('webp')
+        .toFile(webpImagePath);
+
       bookObject.imageUrl = `${req.protocol}://${req.get('host')}${webpImagePath.slice(1)}`;
 
       fs.unlinkSync(imagePath);
@@ -101,21 +110,24 @@ exports.getBestRatedBooks = (req, res, next) => {
     .catch(err => res.status(500).json({ message: err.message }));
 };
 
-exports.addRatingToBook = (req, res, next) => {
+exports.addRatingToBook = async (req, res, next) => {
   const { userId, rating } = req.body;
-  Book.findById(req.params.id)
-    .then(book => {
-      const existingRating = book.ratings.find(r => r.userId === userId);
-      if (existingRating) {
-        return res.status(400).json({ message: 'Vous avez déjà noté ce livre' });
-      }
+  const bookId = req.params.id;
 
-      book.ratings.push({ userId, grade: rating });
-      book.averageRating = calculateAverageRating(book.ratings);
+  try {
+    const book = await Book.findById(bookId);
 
-      book.save()
-        .then(savedBook => res.status(200).json({ message: 'Note ajoutée avec succès', book: savedBook }))
-        .catch(err => res.status(401).json({ message: err.message }));
-    })
-    .catch(err => res.status(401).json({ message: err.message }));
+    const existingRating = book.ratings.find(r => r.userId === userId);
+    if (existingRating) {
+      return res.status(400).json({ error: 'Vous avez déjà noté ce livre' });
+    }
+
+    book.ratings.push({ userId, grade: rating });
+    book.averageRating = calculateAverageRating(book.ratings);
+
+    await book.save();
+    res.status(200).json(book);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
 };
